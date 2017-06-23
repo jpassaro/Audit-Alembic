@@ -62,3 +62,9 @@ docs/_build
 .bootstrap
 .appveyor.token
 *.bak
+
+# from tests
+scratch/*
+scratch_*/*
+*.db
+tests/profiles.txt

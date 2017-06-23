@@ -26,7 +26,7 @@ setup(
     name='Audit-Alembic',
     version='0.1.0',
     license='BSD',
-    description="Traccack patch history alongside Alembic's database patch tracking",
+    description="Track patch history alongside Alembic's database patch tracking",
     long_description='%s\n%s' % (
         re.compile('^.. start-badges.*^.. end-badges', re.M | re.S).sub('', read('README.rst')),
         re.sub(':[a-z]+:`~?(.*?)`', r'``\1``', read('CHANGELOG.rst'))
@@ -66,7 +66,14 @@ setup(
         # eg: 'keyword1', 'keyword2', 'keyword3',
     ],
     install_requires=[
-        'click',
+        'alembic==0.9.3.dev0',
+        'SQLAlchemy>=1.0.0',
+    ],
+    test_requires=[
+        'psycopg2'
+    ],
+    dependency_links=[
+        'https://bitbucket.org/jpassaro/alembic/get/extend-context.tar.gz#egg=alembic-0.9.3.dev0',
     ],
     extras_require={
         # eg:

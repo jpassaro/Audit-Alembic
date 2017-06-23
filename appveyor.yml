@@ -11,55 +11,212 @@ environment:
       PYTHON_HOME: C:\Python27
       PYTHON_VERSION: '2.7'
       PYTHON_ARCH: '32'
-    - TOXENV: 'py27,report,codecov'
+    - TOXENV: 'py27-sqlite,codecov'
       TOXPYTHON: C:\Python27\python.exe
       PYTHON_HOME: C:\Python27
       PYTHON_VERSION: '2.7'
       PYTHON_ARCH: '32'
-    - TOXENV: 'py27,report,codecov'
+    - TOXENV: 'py27-sqlite,codecov'
       TOXPYTHON: C:\Python27-x64\python.exe
       WINDOWS_SDK_VERSION: v7.0
       PYTHON_HOME: C:\Python27-x64
       PYTHON_VERSION: '2.7'
       PYTHON_ARCH: '64'
-    - TOXENV: 'py33,report,codecov'
-      TOXPYTHON: C:\Python33\python.exe
-      PYTHON_HOME: C:\Python33
-      PYTHON_VERSION: '3.3'
+    - TOXENV: 'py27-sqlite_file,codecov'
+      TOXPYTHON: C:\Python27\python.exe
+      PYTHON_HOME: C:\Python27
+      PYTHON_VERSION: '2.7'
       PYTHON_ARCH: '32'
-    - TOXENV: 'py33,report,codecov'
-      TOXPYTHON: C:\Python33-x64\python.exe
-      WINDOWS_SDK_VERSION: v7.1
-      PYTHON_HOME: C:\Python33-x64
-      PYTHON_VERSION: '3.3'
+    - TOXENV: 'py27-sqlite_file,codecov'
+      TOXPYTHON: C:\Python27-x64\python.exe
+      WINDOWS_SDK_VERSION: v7.0
+      PYTHON_HOME: C:\Python27-x64
+      PYTHON_VERSION: '2.7'
       PYTHON_ARCH: '64'
-    - TOXENV: 'py34,report,codecov'
+    - TOXENV: 'py27-mysql,codecov'
+      TOXPYTHON: C:\Python27\python.exe
+      PYTHON_HOME: C:\Python27
+      PYTHON_VERSION: '2.7'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py27-mysql,codecov'
+      TOXPYTHON: C:\Python27-x64\python.exe
+      WINDOWS_SDK_VERSION: v7.0
+      PYTHON_HOME: C:\Python27-x64
+      PYTHON_VERSION: '2.7'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py27-oracle,codecov'
+      TOXPYTHON: C:\Python27\python.exe
+      PYTHON_HOME: C:\Python27
+      PYTHON_VERSION: '2.7'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py27-oracle,codecov'
+      TOXPYTHON: C:\Python27-x64\python.exe
+      WINDOWS_SDK_VERSION: v7.0
+      PYTHON_HOME: C:\Python27-x64
+      PYTHON_VERSION: '2.7'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py27-mssql,codecov'
+      TOXPYTHON: C:\Python27\python.exe
+      PYTHON_HOME: C:\Python27
+      PYTHON_VERSION: '2.7'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py27-mssql,codecov'
+      TOXPYTHON: C:\Python27-x64\python.exe
+      WINDOWS_SDK_VERSION: v7.0
+      PYTHON_HOME: C:\Python27-x64
+      PYTHON_VERSION: '2.7'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py34-sqlite,codecov'
       TOXPYTHON: C:\Python34\python.exe
       PYTHON_HOME: C:\Python34
       PYTHON_VERSION: '3.4'
       PYTHON_ARCH: '32'
-    - TOXENV: 'py34,report,codecov'
+    - TOXENV: 'py34-sqlite,codecov'
       TOXPYTHON: C:\Python34-x64\python.exe
       WINDOWS_SDK_VERSION: v7.1
       PYTHON_HOME: C:\Python34-x64
       PYTHON_VERSION: '3.4'
       PYTHON_ARCH: '64'
-    - TOXENV: 'py35,report,codecov'
+    - TOXENV: 'py34-sqlite_file,codecov'
+      TOXPYTHON: C:\Python34\python.exe
+      PYTHON_HOME: C:\Python34
+      PYTHON_VERSION: '3.4'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py34-sqlite_file,codecov'
+      TOXPYTHON: C:\Python34-x64\python.exe
+      WINDOWS_SDK_VERSION: v7.1
+      PYTHON_HOME: C:\Python34-x64
+      PYTHON_VERSION: '3.4'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py34-mysql,codecov'
+      TOXPYTHON: C:\Python34\python.exe
+      PYTHON_HOME: C:\Python34
+      PYTHON_VERSION: '3.4'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py34-mysql,codecov'
+      TOXPYTHON: C:\Python34-x64\python.exe
+      WINDOWS_SDK_VERSION: v7.1
+      PYTHON_HOME: C:\Python34-x64
+      PYTHON_VERSION: '3.4'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py34-oracle,codecov'
+      TOXPYTHON: C:\Python34\python.exe
+      PYTHON_HOME: C:\Python34
+      PYTHON_VERSION: '3.4'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py34-oracle,codecov'
+      TOXPYTHON: C:\Python34-x64\python.exe
+      WINDOWS_SDK_VERSION: v7.1
+      PYTHON_HOME: C:\Python34-x64
+      PYTHON_VERSION: '3.4'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py34-mssql,codecov'
+      TOXPYTHON: C:\Python34\python.exe
+      PYTHON_HOME: C:\Python34
+      PYTHON_VERSION: '3.4'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py34-mssql,codecov'
+      TOXPYTHON: C:\Python34-x64\python.exe
+      WINDOWS_SDK_VERSION: v7.1
+      PYTHON_HOME: C:\Python34-x64
+      PYTHON_VERSION: '3.4'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py35-sqlite,codecov'
       TOXPYTHON: C:\Python35\python.exe
       PYTHON_HOME: C:\Python35
       PYTHON_VERSION: '3.5'
       PYTHON_ARCH: '32'
-    - TOXENV: 'py35,report,codecov'
+    - TOXENV: 'py35-sqlite,codecov'
       TOXPYTHON: C:\Python35-x64\python.exe
       PYTHON_HOME: C:\Python35-x64
       PYTHON_VERSION: '3.5'
       PYTHON_ARCH: '64'
-    - TOXENV: 'py36,report,codecov'
+    - TOXENV: 'py35-sqlite_file,codecov'
+      TOXPYTHON: C:\Python35\python.exe
+      PYTHON_HOME: C:\Python35
+      PYTHON_VERSION: '3.5'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py35-sqlite_file,codecov'
+      TOXPYTHON: C:\Python35-x64\python.exe
+      PYTHON_HOME: C:\Python35-x64
+      PYTHON_VERSION: '3.5'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py35-mysql,codecov'
+      TOXPYTHON: C:\Python35\python.exe
+      PYTHON_HOME: C:\Python35
+      PYTHON_VERSION: '3.5'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py35-mysql,codecov'
+      TOXPYTHON: C:\Python35-x64\python.exe
+      PYTHON_HOME: C:\Python35-x64
+      PYTHON_VERSION: '3.5'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py35-oracle,codecov'
+      TOXPYTHON: C:\Python35\python.exe
+      PYTHON_HOME: C:\Python35
+      PYTHON_VERSION: '3.5'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py35-oracle,codecov'
+      TOXPYTHON: C:\Python35-x64\python.exe
+      PYTHON_HOME: C:\Python35-x64
+      PYTHON_VERSION: '3.5'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py35-mssql,codecov'
+      TOXPYTHON: C:\Python35\python.exe
+      PYTHON_HOME: C:\Python35
+      PYTHON_VERSION: '3.5'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py35-mssql,codecov'
+      TOXPYTHON: C:\Python35-x64\python.exe
+      PYTHON_HOME: C:\Python35-x64
+      PYTHON_VERSION: '3.5'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py36-sqlite,codecov'
       TOXPYTHON: C:\Python36\python.exe
       PYTHON_HOME: C:\Python36
       PYTHON_VERSION: '3.6'
       PYTHON_ARCH: '32'
-    - TOXENV: 'py36,report,codecov'
+    - TOXENV: 'py36-sqlite,codecov'
+      TOXPYTHON: C:\Python36-x64\python.exe
+      PYTHON_HOME: C:\Python36-x64
+      PYTHON_VERSION: '3.6'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py36-sqlite_file,codecov'
+      TOXPYTHON: C:\Python36\python.exe
+      PYTHON_HOME: C:\Python36
+      PYTHON_VERSION: '3.6'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py36-sqlite_file,codecov'
+      TOXPYTHON: C:\Python36-x64\python.exe
+      PYTHON_HOME: C:\Python36-x64
+      PYTHON_VERSION: '3.6'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py36-mysql,codecov'
+      TOXPYTHON: C:\Python36\python.exe
+      PYTHON_HOME: C:\Python36
+      PYTHON_VERSION: '3.6'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py36-mysql,codecov'
+      TOXPYTHON: C:\Python36-x64\python.exe
+      PYTHON_HOME: C:\Python36-x64
+      PYTHON_VERSION: '3.6'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py36-oracle,codecov'
+      TOXPYTHON: C:\Python36\python.exe
+      PYTHON_HOME: C:\Python36
+      PYTHON_VERSION: '3.6'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py36-oracle,codecov'
+      TOXPYTHON: C:\Python36-x64\python.exe
+      PYTHON_HOME: C:\Python36-x64
+      PYTHON_VERSION: '3.6'
+      PYTHON_ARCH: '64'
+    - TOXENV: 'py36-mssql,codecov'
+      TOXPYTHON: C:\Python36\python.exe
+      PYTHON_HOME: C:\Python36
+      PYTHON_VERSION: '3.6'
+      PYTHON_ARCH: '32'
+    - TOXENV: 'py36-mssql,codecov'
       TOXPYTHON: C:\Python36-x64\python.exe
       PYTHON_HOME: C:\Python36-x64
       PYTHON_VERSION: '3.6'

@@ -12,22 +12,64 @@ matrix:
   include:
     - python: '2.7'
       env:
-        - TOXENV=py27,report,codecov
-    - python: '3.3'
+        - TOXENV=py27-sqlite,report,codecov
+    - python: '2.7'
       env:
-        - TOXENV=py33,report,codecov
+        - TOXENV=py27-sqlite_file,report,codecov
+    - python: '2.7'
+      env:
+        - TOXENV=py27-mysql,report,codecov
+    - python: '2.7'
+      env:
+        - TOXENV=py27-oracle,report,codecov
+    - python: '2.7'
+      env:
+        - TOXENV=py27-mssql,report,codecov
     - python: '3.4'
       env:
-        - TOXENV=py34,report,codecov
+        - TOXENV=py34-sqlite,report,codecov
+    - python: '3.4'
+      env:
+        - TOXENV=py34-sqlite_file,report,codecov
+    - python: '3.4'
+      env:
+        - TOXENV=py34-mysql,report,codecov
+    - python: '3.4'
+      env:
+        - TOXENV=py34-oracle,report,codecov
+    - python: '3.4'
+      env:
+        - TOXENV=py34-mssql,report,codecov
     - python: '3.5'
       env:
-        - TOXENV=py35,report,codecov
+        - TOXENV=py35-sqlite,report,codecov
+    - python: '3.5'
+      env:
+        - TOXENV=py35-sqlite_file,report,codecov
+    - python: '3.5'
+      env:
+        - TOXENV=py35-mysql,report,codecov
+    - python: '3.5'
+      env:
+        - TOXENV=py35-oracle,report,codecov
+    - python: '3.5'
+      env:
+        - TOXENV=py35-mssql,report,codecov
     - python: '3.6'
       env:
-        - TOXENV=py36,report,codecov
-    - python: 'pypy-5.4'
+        - TOXENV=py36-sqlite,report,codecov
+    - python: '3.6'
       env:
-        - TOXENV=pypy,report,codecov
+        - TOXENV=py36-sqlite_file,report,codecov
+    - python: '3.6'
+      env:
+        - TOXENV=py36-mysql,report,codecov
+    - python: '3.6'
+      env:
+        - TOXENV=py36-oracle,report,codecov
+    - python: '3.6'
+      env:
+        - TOXENV=py36-mssql,report,codecov
 before_install:
   - python --version
   - uname -a
@@ -47,3 +89,4 @@ notifications:
   email:
     on_success: never
     on_failure: always
+

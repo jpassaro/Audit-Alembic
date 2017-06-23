@@ -1,12 +1,9 @@
-
-from click.testing import CliRunner
+from sqlalchemy.testing.fixtures import TestBase
 
 from audit_alembic.cli import main
 
 
-def test_main():
-    runner = CliRunner()
-    result = runner.invoke(main, [])
-
-    assert result.output == '()\n'
-    assert result.exit_code == 0
+class TestMigrationContext(TestBase):
+    __backend__ = True
+    def test_migrations(self):
+        assert main([]) == 0
