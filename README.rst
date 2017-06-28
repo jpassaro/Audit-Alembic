@@ -59,7 +59,7 @@ Overview
 
 .. end-badges
 
-Track patch history alongside Alembic's database patch tracking.
+An Alembic plugin to keep records of upgrades and downgrades.
 
 * Free software: MIT license
 
@@ -70,6 +70,62 @@ Installation
 
     pip install Audit-Alembic
 
+Getting started
+===============
+
+Quickstart
+----------
+
+Add the following lines to your Alembic ``env.py``::
+
+    from audit_alembic import Auditor
+    from myapp import version
+
+    Auditor.create(version).setup()
+
+Slightly more involved::
+
+    # myapp.py
+    alembic_auditor = Auditor.create(version, ...)
+
+    # env.py
+    from myapp import alembic_auditor
+
+    def run_migrations_offline():
+        ...
+        context.configure(
+            ...
+            on_version_apply=alembic_auditor.listen
+        )
+        ...
+
+    def run_migrations_offline():
+        ...
+        context.configure(
+            ...
+            on_version_apply=alembic_auditor.listen
+        )
+    ...
+
+More involved
+-------------
+
+These functions create an alembic history table and merely ask
+you to specify your application version (though they allow much
+else to be customized as well). If you already have a table you
+wish to add records to whenever an alembic operation takes place,
+and you have a callable that creates a row for that table,
+you can instantiate ``Auditor`` directly::
+
+    alembic_auditor = Auditor(HistoryTable, HistoryTable.alembic_version_applied)
+
+In this case ``alembic_version_applied`` specifies how to build the row
+based on Alembic's ``on_version_apply`` hook.
+
+Customizing not just what data to populate a row with but whehter the row
+should appear at all is not currently supported. If you wish to do so, directly
+using Alembic's ``on_version_apply`` hook may be a better fit for you.
+
 Documentation
 =============
 
@@ -78,9 +134,31 @@ https://Audit-Alembic.readthedocs.io/
 Development
 ===========
 
-To run all tests, run::
+Status
+------
 
-    tox
+The most basic tests have been written and pass on Postgres and SQLite as a
+file. They fail for SQLite in-memory. Status for tests of other DB's is not
+known.
+
+Another couple of tests have been written but are still failing.
+
+Please feel free to expand from there. See the issues for a list of known
+issues to work on.
+
+Testing
+-------
+
+To run basic tests::
+
+    $ virtualenv venv && source venv/bin/activate
+    (venv) $ python setup.py install
+    (venv) $ pip install pytest psycopg2
+    (venv) $ pytest
+
+To run all tests (i.e. py2 + py3, across all database drivers), run::
+
+    $ tox
 
 Note, to combine the coverage data from all the tox environments run:
 

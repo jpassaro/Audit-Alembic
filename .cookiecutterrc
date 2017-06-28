@@ -33,7 +33,7 @@ default_context:
     landscape:                 'no'
     package_name:              'audit_alembic'
     project_name:              'Audit-Alembic'
-    project_short_description: "Track patch history alongside Alembic's database patch tracking."
+    project_short_description: "An Alembic plugin to keep records of upgrades and downgrades."
     release_date:              'today'
     repo_name:                 'Audit-Alembic'
     requiresio:                'yes'

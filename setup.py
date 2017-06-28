@@ -26,7 +26,7 @@ setup(
     name='Audit-Alembic',
     version='0.1.0',
     license='BSD',
-    description="Track patch history alongside Alembic's database patch tracking",
+    description="An Alembic plugin to keep records of upgrades and downgrades.",
     long_description='%s\n%s' % (
         re.compile('^.. start-badges.*^.. end-badges', re.M | re.S).sub('', read('README.rst')),
         re.sub(':[a-z]+:`~?(.*?)`', r'``\1``', read('CHANGELOG.rst'))
@@ -41,7 +41,7 @@ setup(
     zip_safe=False,
     classifiers=[
         # complete classifier list: http://pypi.python.org/pypi?%3Aaction=list_classifiers
-        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Operating System :: Unix',
@@ -70,10 +70,12 @@ setup(
         'SQLAlchemy>=1.0.0',
     ],
     test_requires=[
-        'psycopg2'
+        'pytest',
+        'psycopg2',
     ],
     dependency_links=[
-        'https://bitbucket.org/jpassaro/alembic/get/extend-context.tar.gz#egg=alembic-0.9.3.dev0',
+        # TODO(john): remove when patch is released
+        'https://bitbucket.org/jpassaro/alembic/get/add-callbacks.tar.gz#egg=alembic-0.9.3.dev0',
     ],
     extras_require={
         # eg:
