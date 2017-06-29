@@ -1,3 +1,4 @@
+import contextlib
 import inspect
 from datetime import datetime
 
@@ -208,45 +209,45 @@ class Auditor(object):
     def get_change_time(**_):
         return datetime.utcnow()
 
-    def setup(self, raise_err=False, context=None):
+    @contextlib.contextmanager
+    def setup(self, context=None):
         """Call from env.py to set up audit listening.
 
         This function checks whether the current version of alembic supports
         it and if so, monkey-patches ``context.configure`` to inject this
         listener into its arguments.
 
-        :param raise_err: True/False. If true, and context is not provided,
-            and method is executed outside of an environment context, a
-            ValueError will be raised.
+        It must be used as a context manager, since afterward it undoes the
+        monkey patch.
+
         :param context: the context to monkey-patch. By default we use
             ``alembic.context``.
-        :return: True/False to indicate whether or not the monkey-patch was
-            applied. It will not be applied if using alembic.context and
-            environment context has not been set up, and it will not be
-            applied if the method detects it has been applied already.
+        :raise ValueError: if context not provided, ``alembic.context``
+            must be active. Additionally ValueError will be raised if
+            the alembic version present does not support ``on_version_apply``.
         """
         if context is None:
             context = alembic_context
             if not hasattr(context, '_proxy'):
-                if raise_err:
-                    raise ValueError('No alembic context given and the global '
-                                     'one is not yet initialized')
-                return False
+                raise ValueError('No alembic context given and the global '
+                                 'one is not yet initialized')
 
         orig_configure = context.configure
-        if orig_configure.__name__ == 'audit_alembic_configure':
-            return False
-        if 'on_version_apply' not in inspect.getargspec(orig_configure).args:
-            raise ValueError(
-                'Alembic version %s does not support event listening'
-                % alembic_version)
+        if orig_configure.__name__ != 'audit_alembic_configure':
+            spec = inspect.getargspec(orig_configure)
+            if 'on_version_apply' not in spec.args:
+                raise ValueError(
+                    'Alembic version %s does not support event listening'
+                    % alembic_version)
 
         def audit_alembic_configure(**kw):
             on_version_apply = to_tuple(kw.get('on_version_apply'))
             kw['on_version_apply'] = on_version_apply + (self.listen,)
             return orig_configure(**kw)
+
         context.configure = audit_alembic_configure
-        return True
+        yield
+        context.configure = orig_configure
 
     def make_row(self, make_row=None, **kw):
         if make_row is None:

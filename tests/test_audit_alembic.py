@@ -9,10 +9,12 @@ from alembic.testing.env import _write_config_file
 from alembic.testing.env import clear_staging_env
 from alembic.testing.env import env_file_fixture
 from alembic.testing.env import staging_env
+from sqlalchemy import inspect
 from sqlalchemy.sql import select
 from sqlalchemy.testing import config as sqla_test_config
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.fixtures import TestBase
+from sqlalchemy.testing.util import drop_all_tables
 
 import audit_alembic
 from audit_alembic.cli import main
@@ -22,8 +24,6 @@ _env_content = """
 import audit_alembic
 from sqlalchemy import engine_from_config, pool
 
-audit_alembic.test_auditor.setup()
-
 def run_migrations_offline():
     url = config.get_main_option('sqlalchemy.url')
     context.configure(url=url, target_metadata=None, literal_binds=True)
@@ -31,17 +31,16 @@ def run_migrations_offline():
         context.run_migrations()
 
 def run_migrations_online():
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
-        prefix='sqlalchemy.', poolclass=pool.NullPool)
+    connectable = audit_alembic.test_version.engine
 
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=None)
         with context.begin_transaction():
             context.run_migrations()
 
-(run_migrations_offline if context.is_offline_mode()
- else run_migrations_online)()
+with audit_alembic.test_auditor.setup():
+    (run_migrations_offline if context.is_offline_mode()
+     else run_migrations_online)()
 """
 
 _cfg_content = """
@@ -113,8 +112,11 @@ def env():
     gen('G3', 'F2')
     gen('G4', 'G3')
     gen('H', 'G G2 G3', depends_on='G4')
-    env._revids = {k: v.revision for k, v in env._revs.items()}
-    return env
+
+    def revids(*names):
+        return '##'.join(env._revs[k].revision for k in names)
+    env._revids = revids
+    yield env
 
 
 class _Versioner(object):
@@ -163,16 +165,24 @@ def version(request):
 
     The Auditor can be accessed via ``audit_alembic.test_auditor``
     """
-    audit_alembic.test_auditor = None
+    audit_alembic.test_auditor = audit_alembic.test_version = None
 
     vers = _Versioner(':'.join((request.module.__name__, request.cls.__name__,
                                 request.function.__name__)))
+    vers.engine = db = sqla_test_config.db
+    vers.conn = db.connect()
+
+    @request.addfinalizer
+    def teardown():
+        drop_all_tables(db, inspect(db))
+
     with mock.patch('audit_alembic.test_auditor',
-                    audit_alembic.Auditor.create(vers.version)) as auditor:
+                    audit_alembic.Auditor.create(vers.version)) as auditor, \
+            mock.patch('audit_alembic.test_version', vers):
         yield vers
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def cmd():
     """Executes alembic commands but auto-substitutes current staging
     config"""
@@ -218,34 +228,36 @@ class TestAudit(TestBase):
     def test_linear_updown_migrations(self, env, version, cmd):
         @version.iterate
         def v():
-            cmd.upgrade(env._revids['D'])
+            cmd.upgrade(env._revids('D'))
             yield
-            cmd.upgrade(env._revids['E'])
+            cmd.upgrade(env._revids('E'))
             yield
             cmd.downgrade('base')
 
         assert len(v) == 3
         assert self.history() == [
-            (env._revids['A'], '', 'up', 'migration', v[0],),
-            (env._revids['B'], env._revids['A'], 'up', 'migration', v[0],),
-            (env._revids['C'], env._revids['B'], 'up', 'migration', v[0],),
-            (env._revids['D'], env._revids['C'], 'up', 'migration', v[0],),
-            (env._revids['E'], env._revids['D'], 'up', 'migration', v[1],),
-            (env._revids['D'], env._revids['E'], 'down', 'migration', v[2],),
-            (env._revids['C'], env._revids['D'], 'down', 'migration', v[2],),
-            (env._revids['B'], env._revids['C'], 'down', 'migration', v[2],),
-            (env._revids['A'], env._revids['B'], 'down', 'migration', v[2],),
-            ('', env._revids['A'], 'down', 'migration', v[2],),
+            (env._revids('A'), '', 'up', 'migration', v[0],),
+            (env._revids('B'), env._revids('A'), 'up', 'migration', v[0],),
+            (env._revids('C'), env._revids('B'), 'up', 'migration', v[0],),
+            (env._revids('D'), env._revids('C'), 'up', 'migration', v[0],),
+            (env._revids('E'), env._revids('D'), 'up', 'migration', v[1],),
+            (env._revids('D'), env._revids('E'), 'down', 'migration', v[2],),
+            (env._revids('C'), env._revids('D'), 'down', 'migration', v[2],),
+            (env._revids('B'), env._revids('C'), 'down', 'migration', v[2],),
+            (env._revids('A'), env._revids('B'), 'down', 'migration', v[2],),
+            ('', env._revids('A'), 'down', 'migration', v[2],),
         ]
 
     def test_merge_unmerge(self, env, version, cmd):
         @version.iterate
         def v():
-            cmd.upgrade(env._revids['F'])
+            cmd.upgrade(env._revids('F'))
             yield
-            cmd.downgrade(env._revids['E'])
+            cmd.downgrade(env._revids('E'))
 
-        history = self.history()
-        import json
-        print(json.dumps(map(tuple, history), indent=2))
-        assert 0
+        F = env._revids('F')
+        Es = env._revids('E', 'E0')
+        assert self.history()[-2:] == [
+            (F, Es, 'up', 'migration', v[0]),
+            (Es, F, 'down', 'migration', v[1]),
+        ]
