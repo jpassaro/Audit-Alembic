@@ -154,7 +154,7 @@ class _Versioner(object):
 
 
 @pytest.fixture(autouse=True)
-def vers(request):
+def version(request):
     """Creates a user version provider and an Auditor instance using it.
 
     The version shows the current module/class/instance/function names,
@@ -215,8 +215,8 @@ class TestAudit(TestBase):
         ]).order_by(table.c.changed_at)
         return sqla_test_config.db.execute(q).fetchall()
 
-    def test_linear_updown_migrations(self, env, vers, cmd):
-        @vers.iterate
+    def test_linear_updown_migrations(self, env, version, cmd):
+        @version.iterate
         def v():
             cmd.upgrade(env._revids['D'])
             yield
@@ -238,8 +238,8 @@ class TestAudit(TestBase):
             ('', env._revids['A'], 'down', 'migration', v[2],),
         ]
 
-    def test_merge_unmerge(self, env, vers, cmd):
-        @vers.iterate
+    def test_merge_unmerge(self, env, version, cmd):
+        @version.iterate
         def v():
             cmd.upgrade(env._revids['F'])
             yield
@@ -247,5 +247,5 @@ class TestAudit(TestBase):
 
         history = self.history()
         import json
-        print(json.dumps(history, indent=2))
+        print(json.dumps(map(tuple, history), indent=2))
         assert 0
