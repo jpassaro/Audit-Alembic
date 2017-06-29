@@ -73,9 +73,9 @@ install:
   - pip --version
   - tox --version
 before_script:
-    - mysql -e "CREATE USER 'scott'@'localhost' IDENTIFIED BY 'tiger';"
-    - mysql -e 'CREATE DATABASE IF NOT EXISTS test;'
-    - mysql -e "GRANT ALL ON test.* TO 'scott'@'localhost';"
+    - mysql -u root -e "CREATE USER 'scott'@'localhost' IDENTIFIED BY 'tiger';"
+    - mysql -u root -e 'CREATE DATABASE IF NOT EXISTS test;'
+    - mysql -u root -e "GRANT ALL ON test.* TO 'scott'@'localhost';"
     - psql -U postgres -c "CREATE USER scott WITH PASSWORD 'tiger'"
     - psql -U postgres -c "CREATE DATABASE test;"
     - psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE test TO scott;"
