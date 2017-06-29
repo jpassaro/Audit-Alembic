@@ -21,12 +21,10 @@ matrix:
         - TOXENV=py27-sqlite_file,report,codecov
     - python: '2.7'
       env:
-        - POSTGRESQL=--dburi postgresql://postgres:@127.0.0.1:5432/test
-        - TOXENV=py27-postgresql,report,codecov
+        - TOXENV=py27-postgresql,report,codecov POSTGRESQL=--dburi postgresql://postgres:@127.0.0.1:5432/test
     - python: '2.7'
       env:
-        - MYSQL=--dburi mysql:///test?unix_socket=~travis/.my.cnf
-        - TOXENV=py27-mysql,report,codecov
+        - TOXENV=py27-mysql,report,codecov MYSQL=--dburi mysql:///test?unix_socket=~travis/.my.cnf
     - python: '3.4'
       env:
         - TOXENV=py34-sqlite,report,codecov
@@ -35,12 +33,10 @@ matrix:
         - TOXENV=py34-sqlite_file,report,codecov
     - python: '3.4'
       env:
-        - POSTGRESQL=--dburi postgresql://postgres:@127.0.0.1:5432/test
-        - TOXENV=py34-postgresql,report,codecov
+        - TOXENV=py34-postgresql,report,codecov POSTGRESQL=--dburi postgresql://postgres:@127.0.0.1:5432/test
     - python: '3.4'
       env:
-        - MYSQL=--dburi mysql:///test?unix_socket=~travis/.my.cnf
-        - TOXENV=py34-mysql,report,codecov
+        - TOXENV=py34-mysql,report,codecov MYSQL=--dburi mysql:///test?unix_socket=~travis/.my.cnf
     - python: '3.5'
       env:
         - TOXENV=py35-sqlite,report,codecov
@@ -49,12 +45,10 @@ matrix:
         - TOXENV=py35-sqlite_file,report,codecov
     - python: '3.5'
       env:
-        - POSTGRESQL=--dburi postgresql://postgres:@127.0.0.1:5432/test
-        - TOXENV=py35-postgresql,report,codecov
+        - TOXENV=py35-postgresql,report,codecov POSTGRESQL=--dburi postgresql://postgres:@127.0.0.1:5432/test
     - python: '3.5'
       env:
-        - MYSQL=--dburi mysql:///test?unix_socket=~travis/.my.cnf
-        - TOXENV=py35-mysql,report,codecov
+        - TOXENV=py35-mysql,report,codecov MYSQL=--dburi mysql:///test?unix_socket=~travis/.my.cnf
     - python: '3.6'
       env:
         - TOXENV=py36-sqlite,report,codecov
@@ -63,12 +57,10 @@ matrix:
         - TOXENV=py36-sqlite_file,report,codecov
     - python: '3.6'
       env:
-        - POSTGRESQL=--dburi postgresql://postgres:@127.0.0.1:5432/test
-        - TOXENV=py36-postgresql,report,codecov
+        - TOXENV=py36-postgresql,report,codecov POSTGRESQL=--dburi postgresql://postgres:@127.0.0.1:5432/test
     - python: '3.6'
       env:
-        - MYSQL=--dburi mysql:///test?unix_socket=~travis/.my.cnf
-        - TOXENV=py36-mysql,report,codecov
+        - TOXENV=py36-mysql,report,codecov MYSQL=--dburi mysql:///test?unix_socket=~travis/.my.cnf
 before_install:
   - python --version
   - uname -a
@@ -80,8 +72,8 @@ install:
   - pip --version
   - tox --version
 before_script:
-    - [[ -z "$MYSQL" ]] || mysql -e 'CREATE DATABASE IF NOT EXISTS test;'
-    - [[ -z "$POSTGRESQL" ]] || psql -U postgres -c 'create database if not exists test;'
+    -  mysql -e 'CREATE DATABASE IF NOT EXISTS test;'
+    -  psql -U postgres -c 'create database if not exists test;'
 script:
   - tox -v
 after_failure:
