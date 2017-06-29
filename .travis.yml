@@ -73,7 +73,7 @@ install:
   - tox --version
 before_script:
     -  mysql -e 'CREATE DATABASE IF NOT EXISTS test;'
-    -  psql -U postgres -c 'create database if not exists test;'
+    -  psql -U postgres -c 'create database test;'
 script:
   - tox -v
 after_failure:
