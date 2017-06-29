@@ -74,7 +74,7 @@ install:
   - tox --version
 before_script:
     - mysql -e 'CREATE DATABASE IF NOT EXISTS test;'
-    - mysql -e "CREATE USER 'scott' IDENTIFIED BY 'tiger'; GRANT ALL ON test.* TO 'scott'@'localhost';"
+    - mysql -e "CREATE USER 'scott'@'localhost' IDENTIFIED BY 'tiger'; GRANT ALL ON test.* TO 'scott'@'localhost';"
     - psql -U postgres -c "CREATE USER scott WITH PASSWORD 'tiger'; create database test; grant all privileges on database test to scott;"
 script:
   - tox -v
