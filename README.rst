@@ -129,7 +129,7 @@ using Alembic's ``on_version_apply`` hook may be a better fit for you.
 Documentation
 =============
 
-https://Audit-Alembic.readthedocs.io/
+https://Audit-Alembic.readthedocs.io/ (not available yet)
 
 Development
 ===========
@@ -137,11 +137,12 @@ Development
 Status
 ------
 
-The most basic tests have been written and pass on Postgres and SQLite as a
-file. They fail for SQLite in-memory. Status for tests of other DB's is not
-known.
+The most basic tests, for using Audit-Alembic "correctly", pass for Postgres,
+MYSQL, and SQLite as a file. Travis does not appear to support MSSQL or Oracle
+so test status for those DB backends is not known.
 
-Another couple of tests have been written but are still failing.
+The next tests that need to be written should get us to 100% code coverage
+as well as covering various error cases.
 
 Please feel free to expand from there. See the issues for a list of known
 issues to work on.
@@ -159,6 +160,8 @@ To run basic tests::
 To run all tests (i.e. py2 + py3, across all database drivers), run::
 
     $ tox
+
+Also see our `Travis setup <https://travis-ci.org/jpassaro/Audit-Alembic>`_.
 
 Note, to combine the coverage data from all the tox environments run:
 

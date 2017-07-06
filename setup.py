@@ -15,6 +15,12 @@ from setuptools import find_packages
 from setuptools import setup
 
 
+# cribbed from alembic
+with open(join(dirname(__file__), 'src', 'alembic', '__init__.py')) as v:
+    VERSION = re.compile(r".*__version__\s*=\s*'(.*?)'",
+                         re.S).match(v.read()).group(1)
+
+
 def read(*names, **kwargs):
     return io.open(
         join(dirname(__file__), *names),
@@ -24,7 +30,7 @@ def read(*names, **kwargs):
 
 setup(
     name='Audit-Alembic',
-    version='0.1.0',
+    version=VERSION,
     license='BSD',
     description="An Alembic plugin to keep records of upgrades and downgrades.",
     long_description='%s\n%s' % (
@@ -34,6 +40,7 @@ setup(
     author='John Passaro',
     author_email='john.a.passaro@gmail.com',
     url='https://github.com/jpassaro/Audit-Alembic',
+    download_url='https://jpassaro/Audit-Alembic/archive/%s.tar.gz' % VERSION,
     packages=find_packages('src'),
     package_dir={'': 'src'},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
@@ -41,7 +48,7 @@ setup(
     zip_safe=False,
     classifiers=[
         # complete classifier list: http://pypi.python.org/pypi?%3Aaction=list_classifiers
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Operating System :: Unix',
