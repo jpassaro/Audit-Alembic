@@ -14,11 +14,10 @@ from os.path import splitext
 from setuptools import find_packages
 from setuptools import setup
 
-
 # cribbed from alembic
 with open(join(dirname(__file__), 'src', 'audit_alembic', '__init__.py')) as v:
-    VERSION = re.compile(r".*__version__\s*=\s*'(.*?)'",
-                         re.S).match(v.read()).group(1)
+    VERSION = re.compile(r".*__version__\s*=\s*(['\"])(.*?)\1",
+                         re.S).match(v.read()).group(2)
 
 
 def read(*names, **kwargs):
