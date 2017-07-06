@@ -63,19 +63,16 @@ setup(
         'Topic :: Utilities',
     ],
     keywords=[
-        # eg: 'keyword1', 'keyword2', 'keyword3',
+        'database',
+        'migration',
+        'db',
     ],
     install_requires=[
-        'alembic==0.9.3.dev0',
-        'SQLAlchemy>=1.0.0',
+        'alembic>=0.9.3',
     ],
     test_requires=[
         'pytest',
         'psycopg2',
-    ],
-    dependency_links=[
-        # TODO(john): remove when patch is released
-        'https://bitbucket.org/jpassaro/alembic/get/add-callbacks.tar.gz#egg=alembic-0.9.3.dev0',
     ],
     extras_require={
         # eg:
@@ -83,8 +80,8 @@ setup(
         #   ':python_version=="2.6"': ['argparse'],
     },
     entry_points={
-        'console_scripts': [
-            'audit-alembic = audit_alembic.cli:main',
-        ]
+        # 'console_scripts': [
+        #     'audit-alembic = audit_alembic.cli:main',
+        # ]
     },
 )
