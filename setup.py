@@ -16,7 +16,7 @@ from setuptools import setup
 
 
 # cribbed from alembic
-with open(join(dirname(__file__), 'src', 'alembic', '__init__.py')) as v:
+with open(join(dirname(__file__), 'src', 'audit_alembic', '__init__.py')) as v:
     VERSION = re.compile(r".*__version__\s*=\s*'(.*?)'",
                          re.S).match(v.read()).group(1)
 
