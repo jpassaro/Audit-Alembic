@@ -17,7 +17,6 @@ from sqlalchemy.testing.fixtures import TestBase
 from sqlalchemy.testing.util import drop_all_tables
 
 import audit_alembic
-from audit_alembic.cli import main
 
 
 _env_content = """
