@@ -1,24 +1,113 @@
 import contextlib
+import functools
 import inspect
+import warnings
 from datetime import datetime
 
 from alembic import __version__ as alembic_version
-from alembic import context as alembic_context
 from alembic import util as alembic_util
 from alembic.operations import ops
-from alembic.runtime.environment import EnvironmentContext
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
 from sqlalchemy import MetaData
 from sqlalchemy import Table
 from sqlalchemy import types
 
-ALEMBIC_SUPPORTS_EVENTS = hasattr(EnvironmentContext, 'on_version_apply')
-del EnvironmentContext
+from . import exc
 
 
 def to_tuple(x):
     return alembic_util.to_tuple(x, default=())
+
+
+def supports_callback(configure_method=None):
+    """Inspect a method to tell whether it supports on_version_apply callback.
+
+    :meth:`.Auditor.setup` uses this essentially to ensure the correct version
+    of alembic is installed.
+    """
+    if configure_method is None:
+        from alembic import context
+        configure_method = context.configure
+    return 'on_version_apply' in inspect.getargspec(configure_method).args
+
+
+class CommonColumnValues(object):
+    """Class with a number of static methods used as column values. Each
+    method has a signature that makes it a suitable value entry for
+    :param:`.Auditor.make_row` or equivalently
+    :param:`.Auditor.create.extra_columns`. They are used as such in
+    :meth:`.Auditor.create` to construct table rows.
+
+    We expose them so that users can imitate our construction in their own
+    tables.
+    """
+
+    @staticmethod
+    def change_time(ctx=None, as_sql=False, **_):
+        """Returns current UTC timestamp.
+
+        :param ctx: alembic.MigrationContext provided by callback. Used to
+        check for SQL mode.
+        :param as_sql: allows user to override context directives and force a
+            literal. This uses `alembic.op.inline_literal` so it may cause
+            trouble if used outside of a migration script.
+        """
+        now = datetime.utcnow()
+        if as_sql or (ctx is not None and ctx.as_sql):
+            from alembic import op
+            now = op.inline_literal(now.isoformat())
+        return now
+
+    @staticmethod
+    def operation_type(step=None, **_):
+        """The type of operation being completed, "stamp" or "migration".
+
+        :param step: an ``alembic.runtime.migration.MigrationInfo``
+        :return: a string, one of "stamp" or "migration"
+        :raise .AuditRuntimeError: if it appears to be neither of these.
+        """
+        if step.is_stamp:
+            return 'stamp'
+        elif step.is_migration:
+            return 'migration'
+        else:
+            raise exc.AuditRuntimeError('Unknown migration type %s'
+                                        % (step.up_revision_id))
+
+    @staticmethod
+    def operation_direction(step=None, **_):
+        """The direction of the operation, "up" or "down"
+
+        :param step: an ``alembic.runtime.migration.MigrationInfo``
+        """
+        if step.is_upgrade:
+            return 'up'
+        else:
+            return 'down'
+
+    @staticmethod
+    def new_alembic_version(step=None, separator='##', **_):
+        """Get the after-operation alembic version.
+
+        :param step: an ``alembic.runtime.migration.MigrationInfo``
+        :param separator: a delimiter used to join several versions if needed
+        :return: a string
+        """
+        return separator.join(step.destination_revision_ids)
+
+    @staticmethod
+    def old_alembic_version(step=None, separator='##', **_):
+        """Get the before-operation alembic version.
+
+        :param step: an ``alembic.runtime.migration.MigrationInfo``
+        :param separator: a delimiter used to join several versions if needed
+        :return: a string
+        """
+        return separator.join(step.source_revision_ids)
+
+
+ccv = CommonColumnValues()
 
 
 class Auditor(object):
@@ -47,29 +136,33 @@ class Auditor(object):
         the kwargs provided by alembic's on_version_apply and returns valid
         input for its corresponding column.
     """
-    def __init__(self, table, make_row=None):
+
+    def __init__(self, table, make_row):
         self.table = table
         if not (callable(make_row) or hasattr(make_row, 'items')):
-            raise ValueError('invalid make_rows argument')
+            raise exc.AuditConstructError('invalid make_rows argument')
         self._make_row = make_row
-        self.created = False
+        self.created_table = False
+
+    @staticmethod
+    def version_warn(msg='null user version', stacklevel=2):
+        warnings.warn(msg, exc.UserVersionWarning, stacklevel=stacklevel)
 
     @classmethod
-    def create(
-        cls,
-        user_version,
-        table_name='alembic_version_history',
-        metadata=None,
-        extra_columns=(),
-        user_version_column_name='user_version',
-        user_version_type=types.String(255),
-        direction_column_name='operation_direction',
-        operation_column_name='operation_type',
-        alembic_version_separator='##',
-        alembic_version_column_name='alembic_version',
-        prev_alembic_version_column_name='prev_alembic_version',
-        change_time_column_name='changed_at',
-    ):
+    def create(cls,
+               user_version,
+               user_version_nullable=False,
+               table_name='alembic_version_history',
+               metadata=None,
+               extra_columns=(),
+               user_version_column_name='user_version',
+               user_version_type=types.String(255),
+               direction_column_name='operation_direction',
+               operation_column_name='operation_type',
+               alembic_version_separator='##',
+               alembic_version_column_name='alembic_version',
+               prev_alembic_version_column_name='prev_alembic_version',
+               change_time_column_name='changed_at',):
         """Autocreate a history table.
 
         This table contains columns for:
@@ -101,6 +194,9 @@ class Auditor(object):
             seriously dilute the value of keeping these records at all. For
             that reason, we highly recommend providing *something* here.
 
+            If you pass ``None``, a warning will be raised.
+
+        :param user_version_nullable: Suppresses the above-mentioned warning.
         :param table_name: The name of the version history table.
         :param metadata: The SQLAlchemy MetaData object with which the table
             is to be created. If not provided, a new one will be created.
@@ -145,6 +241,18 @@ class Auditor(object):
             time of this migration
 
         """
+        if not user_version_nullable:
+            if user_version is None:
+                cls.version_warn()
+            elif callable(user_version):
+                orig_user_version = user_version
+
+                def user_version(**kw):
+                    val = orig_user_version(**kw)
+                    if val is None:
+                        cls.version_warn(stacklevel=1)
+                    return val
+
         if metadata is None:
             metadata = MetaData()
 
@@ -166,79 +274,80 @@ class Auditor(object):
             Column(change_time_column_name, types.DateTime())
         ]
 
-        def alembic_version_getter(vtype):
-            def getter(step=None, **_):
-                return alembic_version_separator.join(to_tuple(
-                    getattr(step, '%s_revision_ids' % vtype)))
-            return getter
+        def alembic_vers(f):
+            return functools.partial(f, separator=alembic_version_separator)
 
         col_vals = {
-            alembic_version_column_name: alembic_version_getter('destination'),
-            prev_alembic_version_column_name: alembic_version_getter('source'),
-            operation_column_name: cls.get_operation_type,
-            direction_column_name: cls.get_operation_direction,
+            alembic_version_column_name: alembic_vers(ccv.new_alembic_version),
+            prev_alembic_version_column_name: alembic_vers(
+                ccv.old_alembic_version),
+            operation_column_name: ccv.operation_type,
+            direction_column_name: ccv.operation_direction,
             user_version_column_name: user_version,
-            change_time_column_name: cls.get_change_time,
+            change_time_column_name: ccv.change_time,
         }
         for col, val in extra_columns:
             columns.append(col)
             if col.name in col_vals:
-                raise KeyError('value %s used twice' % col.name)
+                raise exc.AuditCreateError('value %s used twice' % col.name)
             col_vals[col.name] = val
 
-        return cls(Table(table_name, metadata, *columns), col_vals)
-
-    @staticmethod
-    def get_operation_type(step=None, **_):
-        if step.is_stamp:
-            return 'stamp'
-        elif step.is_migration:
-            return 'migration'
-        else:
-            raise ValueError('Unknown migration type %s'
-                             % (step.up_revision_id))
-
-    @staticmethod
-    def get_operation_direction(step=None, **_):
-        if step.is_upgrade:
-            return 'up'
-        else:
-            return 'down'
-
-    @staticmethod
-    def get_change_time(**_):
-        return datetime.utcnow()
+        auditor = cls(Table(table_name, metadata, *columns), col_vals)
+        return auditor
 
     @contextlib.contextmanager
     def setup(self, context=None):
-        """Call from env.py to set up audit listening.
+        """Call to set up audit listening.
 
-        This function checks whether the current version of alembic supports
-        it and if so, monkey-patches ``context.configure`` to inject this
-        listener into its arguments.
+        This convenience function checks whether the current version of
+        alembic supports it and if so, monkey-patches ``context.configure`` to
+        inject this listener into its arguments.
 
         It must be used as a context manager, since afterward it undoes the
-        monkey patch.
+        monkey patch. E.g. at the end of an env.py file::
 
-        :param context: the context to monkey-patch. By default we use
-            ``alembic.context``.
-        :raise ValueError: if context not provided, ``alembic.context``
-            must be active. Additionally ValueError will be raised if
-            the alembic version present does not support ``on_version_apply``.
+            with auditor.setup():
+                if context.is_offline_mode():
+                    run_migrations_offline()
+                else:
+                    run_migrations_online()
+
+        This is merely a convenience method and cannot be nested. E.g.
+        the following is not supported::
+
+            with auditor1.setup():
+                with auditor2.setup():
+                    ...
+
+        If this is your use case, it is better to give the two Auditors
+        directly to Alembic's ``on_version_apply``::
+
+            from alembic import context
+            context.configure(
+                ...
+                on_version_apply=[auditor1.listen, auditor2.listen]
+            )
+
+
+        :param context: the context to monkey-patch. If none is provided,
+            ``alembic.context`` is used by default, which is generally the
+            right choice when run from inside ``env.py``.  An
+            :class:`.AuditSetupError` is raised if the ``configure`` method of
+            the context does not explicitly support the keyword
+            ``on_version_apply`` (this may change in the future).
         """
         if context is None:
-            context = alembic_context
-            if not hasattr(context, '_proxy'):
-                raise ValueError('No alembic context given and the global '
-                                 'one is not yet initialized')
+            from alembic import context
 
         orig_configure = context.configure
-        if orig_configure.__name__ != 'audit_alembic_configure':
-            spec = inspect.getargspec(orig_configure)
-            if 'on_version_apply' not in spec.args:
-                raise ValueError(
-                    'Alembic version %s does not support event listening'
-                    % alembic_version)
+        if orig_configure.__name__ == 'audit_alembic_configure':
+            raise exc.AuditSetupError('nested setup blocks are not supported, '
+                                      'use on_version_apply if you have two '
+                                      'listeners')
+        elif not supports_callback(orig_configure):
+            raise exc.AuditSetupError(
+                'Alembic version %s does not support event listening'
+                % alembic_version)
 
         def audit_alembic_configure(**kw):
             on_version_apply = to_tuple(kw.get('on_version_apply'))
@@ -246,25 +355,28 @@ class Auditor(object):
             return orig_configure(**kw)
 
         context.configure = audit_alembic_configure
-        yield
-        context.configure = orig_configure
+        try:
+            yield
+        finally:
+            context.configure = orig_configure
 
-    def make_row(self, make_row=None, **kw):
-        if make_row is None:
-            make_row = self._make_row
+    def make_row(self, **kw):
+        make_row = self._make_row
         if callable(make_row):
             make_row = make_row(**kw)
-        if hasattr(make_row, 'items'):
-            make_row = {k: v(**kw) if callable(v) else v
-                        for k, v in make_row.items()}
+        if not hasattr(make_row, 'items'):
+            raise exc.AuditRuntimeError('make_row() should return a dict, '
+                                        'instead got %r' % repr(make_row))
+        make_row = {k: v(**kw) if callable(v) else v
+                    for k, v in make_row.items()}
         return make_row
 
-    def listen(self, ctx=None, **kw):
+    def listen(self, ctx=None, warn_user_version=True, **kw):
         from alembic import op
-        if not self.created:
+        if not self.created_table:
             if ctx.as_sql:
                 op.invoke(ops.CreateTableOp.from_table(self.table))
             else:
                 self.table.create(ctx.connection, checkfirst=True)
-            self.created = True
-        op.bulk_insert(self.table, [self.make_row(**kw)])
+            self.created_table = True
+        op.bulk_insert(self.table, [self.make_row(ctx=ctx, **kw)])

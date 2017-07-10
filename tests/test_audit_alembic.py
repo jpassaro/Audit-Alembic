@@ -1,4 +1,7 @@
+import contextlib
 import functools
+from datetime import datetime
+from datetime import timedelta
 
 import pytest
 from alembic import command as alcommand
@@ -6,10 +9,13 @@ from alembic import util
 from alembic.testing.env import _get_staging_directory
 from alembic.testing.env import _testing_config
 from alembic.testing.env import _write_config_file
-from alembic.testing.env import clear_staging_env
 from alembic.testing.env import env_file_fixture
 from alembic.testing.env import staging_env
+from sqlalchemy import Column
+from sqlalchemy import MetaData
+from sqlalchemy import Table
 from sqlalchemy import inspect
+from sqlalchemy import types
 from sqlalchemy.sql import select
 from sqlalchemy.testing import config as sqla_test_config
 from sqlalchemy.testing import mock
@@ -17,11 +23,13 @@ from sqlalchemy.testing.fixtures import TestBase
 from sqlalchemy.testing.util import drop_all_tables
 
 import audit_alembic
+from audit_alembic import exc
 
+test_col_name = 'custom_data'
 
 _env_content = """
 import audit_alembic
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import Column, engine_from_config, pool, types
 
 def run_migrations_offline():
     url = config.get_main_option('sqlalchemy.url')
@@ -49,9 +57,54 @@ sqlalchemy.url = %s
 """
 
 
+def _custom_auditor(make_row=None):
+    if make_row is None:
+        def make_row(**_):
+            return {'changed_at': audit_alembic.CommonColumnValues.change_time}
+
+    custom_table = Table('custom_alembic_history', MetaData(),
+                         Column('id',
+                                types.BIGINT().with_variant(types.Integer,
+                                                            'sqlite'),
+                                primary_key=True),
+                         Column('changed_at', types.DateTime()))
+    return audit_alembic.Auditor(custom_table, make_row)
+
+
+def _find(list_, f_or_obj, strip=False):
+    if callable(f_or_obj):
+        i = next((i for i, x in enumerate(list_) if f_or_obj(x)), None)
+    elif f_or_obj in list_:
+        i = list_.index(f_or_obj)
+    else:
+        i = None
+    if strip and i is not None:
+        list_[:] = list_[i + 1:]
+    return i
+
+
+class AuditTypeError(TypeError):
+    pass
+
+
+def _multiequal(*args):
+    def setify(x):
+        if isinstance(x, (frozenset)):  # pragma: no cover
+            return x
+        if hasattr(x, 'split'):
+            x = x.split('##')
+        if isinstance(x, (set, list, tuple)):
+            return frozenset(x)
+        raise AuditTypeError(repr(x) + ' is not a valid input')
+
+    allthem = set(map(setify, args))
+    if len(allthem) == 1:
+        return next(iter(allthem))
+
+
 @pytest.fixture
 def env():
-    r"""Create an environment in which to run this test class.
+    r"""Create an environment in which to run this test.
 
     Creates the environment directory using alembic.testing utilities, and
     additionally creates a revision map and scripts.
@@ -86,13 +139,12 @@ def env():
     env_file_fixture(_env_content)
     _write_config_file(_cfg_content % (_get_staging_directory(),
                                        sqla_test_config.db_url))
-    env._revs = {}
+    revs = env._revs = {}
 
-    def gen(rev, head=None, revid=None, **kw):
+    def gen(rev, head=None, **kw):
         if head:
             kw['head'] = [env._revs[h].revision for h in head.split()]
-        if revid is None:
-            revid = '__'.join((rev, util.rev_id()))
+        revid = '__'.join((rev, util.rev_id()))
         env._revs[rev] = env.generate_revision(revid, rev, splice=True, **kw)
 
     gen('A')
@@ -110,12 +162,16 @@ def env():
     gen('G2', 'F2')
     gen('G3', 'F2')
     gen('G4', 'G3')
-    gen('H', 'G G2 G3', depends_on='G4')
+    gen('H', 'G G2', depends_on='G4')
 
-    def revids(*names):
-        return '##'.join(env._revs[k].revision for k in names)
-    env._revids = revids
+    revids = env._revids = {k: v.revision for k, v in revs.items()}
+    env.R = type('R', (object,), revids)
     yield env
+    # we purposefully leave it intact so somebody running it can inspect the
+    # contents after a test run. In other words, none of this:
+    # clear_staging_env()
+    # the user can just clean up after themselves. This seems to happen when
+    # running alembic tests quite a bit.
 
 
 class _Versioner(object):
@@ -128,20 +184,8 @@ class _Versioner(object):
     def inc(self, ct=1):
         self.n += ct
 
-    def version(self, n=None, **kw):
-        if n is None:
-            n = self.n
-        return self.fmt.format(name=self.name, n=n)
-
-    def verify(self, version, exp_n=''):
-        expstr = self.version(exp_n or '')
-        if exp_n:
-            assert expstr == version
-        else:
-            assert version.startswith(expstr)
-            version = version[len(expstr):]
-            assert version and version.isdigit()
-            return int(version)
+    def version(self, **kw):
+        return self.fmt.format(name=self.name, n=self.n)
 
     def iterate(self, fn):
         """Go through a generator, incrementing version numbers, return all
@@ -164,7 +208,8 @@ def version(request):
 
     The Auditor can be accessed via ``audit_alembic.test_auditor``
     """
-    audit_alembic.test_auditor = audit_alembic.test_version = None
+    audit_alembic.test_auditor = audit_alembic.test_version \
+        = audit_alembic.test_custom_data = None
 
     vers = _Versioner(':'.join((request.module.__name__, request.cls.__name__,
                                 request.function.__name__)))
@@ -173,11 +218,17 @@ def version(request):
 
     @request.addfinalizer
     def teardown():
+        vers.conn.close()
         drop_all_tables(db, inspect(db))
 
-    with mock.patch('audit_alembic.test_auditor',
-                    audit_alembic.Auditor.create(vers.version)) as auditor, \
-            mock.patch('audit_alembic.test_version', vers):
+    with mock.patch(
+        'audit_alembic.test_auditor',
+        audit_alembic.Auditor.create(
+            vers.version,
+            extra_columns=[(Column(test_col_name, types.String(32)),
+                            lambda **kw: audit_alembic.test_custom_data)]
+        )
+    ), mock.patch('audit_alembic.test_version', vers):
         yield vers
 
 
@@ -189,11 +240,15 @@ def cmd():
         def __getattr__(self, attr):
             fn = getattr(alcommand, attr)
             if callable(fn):
-                @functools.wraps(fn)
-                def inner(*args, **kwargs):
-                    return fn(_testing_config(), *args, **kwargs)
-                return inner
-            return fn
+                old_fn = fn
+
+                @functools.wraps(old_fn)
+                def fn(rev, *args, **kwargs):
+                    old_fn(_testing_config(), rev, *args, **kwargs)
+                    return rev
+                return fn
+            else:  # pragma: no cover
+                return fn
     return MyCmd()
 
 
@@ -209,54 +264,302 @@ def cmd():
 # 8. upgrade, verify upgrades appear for E, E0, F1, no dupe E1, old row for D
 #     unchanged and new D upgrade also appears
 
-class TestAudit(TestBase):
-    __backend__ = True
 
-    @classmethod
-    def history(cls):
-        table = audit_alembic.test_auditor.table
-        q = select([
-            table.c.alembic_version,
-            table.c.prev_alembic_version,
-            table.c.operation_direction,
-            table.c.operation_type,
-            table.c.user_version,
-        ]).order_by(table.c.changed_at)
-        return sqla_test_config.db.execute(q).fetchall()
+def _history():
+    table = audit_alembic.test_auditor.table
+    q = select([
+        table.c.alembic_version,
+        table.c.prev_alembic_version,
+        table.c.operation_direction,
+        table.c.operation_type,
+        table.c.user_version,
+        getattr(table.c, test_col_name),
+    ]).order_by(table.c.changed_at)
+    return sqla_test_config.db.execute(q).fetchall()
+
+
+class TestAuditTable(TestBase):
+    __backend__ = True
+    history = staticmethod(_history)
 
     def test_linear_updown_migrations(self, env, version, cmd):
-        @version.iterate
-        def v():
-            cmd.upgrade(env._revids('D'))
-            yield
-            cmd.upgrade(env._revids('E'))
-            yield
-            cmd.downgrade('base')
+        now = str(datetime.utcnow())
+        with mock.patch('audit_alembic.test_custom_data', now):
+            @version.iterate
+            def v():
+                cmd.upgrade(env.R.D)
+                yield
+                cmd.upgrade(env.R.E)
+                yield
+                cmd.downgrade('base')
 
         assert len(v) == 3
-        assert self.history() == [
-            (env._revids('A'), '', 'up', 'migration', v[0],),
-            (env._revids('B'), env._revids('A'), 'up', 'migration', v[0],),
-            (env._revids('C'), env._revids('B'), 'up', 'migration', v[0],),
-            (env._revids('D'), env._revids('C'), 'up', 'migration', v[0],),
-            (env._revids('E'), env._revids('D'), 'up', 'migration', v[1],),
-            (env._revids('D'), env._revids('E'), 'down', 'migration', v[2],),
-            (env._revids('C'), env._revids('D'), 'down', 'migration', v[2],),
-            (env._revids('B'), env._revids('C'), 'down', 'migration', v[2],),
-            (env._revids('A'), env._revids('B'), 'down', 'migration', v[2],),
-            ('', env._revids('A'), 'down', 'migration', v[2],),
+        history = self.history()
+        assert set(h[-1] for h in history) == set((now,))
+        history = [h[:-1] for h in history]
+        assert history == [
+            (env.R.A, '', 'up', 'migration', v[0],),
+            (env.R.B, env.R.A, 'up', 'migration', v[0],),
+            (env.R.C, env.R.B, 'up', 'migration', v[0],),
+            (env.R.D, env.R.C, 'up', 'migration', v[0],),
+            (env.R.E, env.R.D, 'up', 'migration', v[1],),
+            (env.R.D, env.R.E, 'down', 'migration', v[2],),
+            (env.R.C, env.R.D, 'down', 'migration', v[2],),
+            (env.R.B, env.R.C, 'down', 'migration', v[2],),
+            (env.R.A, env.R.B, 'down', 'migration', v[2],),
+            ('', env.R.A, 'down', 'migration', v[2],),
         ]
 
     def test_merge_unmerge(self, env, version, cmd):
         @version.iterate
         def v():
-            cmd.upgrade(env._revids('F'))
+            cmd.upgrade(env.R.F)
             yield
-            cmd.downgrade(env._revids('E'))
+            cmd.downgrade(env.R.E)
 
-        F = env._revids('F')
-        Es = env._revids('E', 'E0')
-        assert self.history()[-2:] == [
-            (F, Es, 'up', 'migration', v[0]),
-            (Es, F, 'down', 'migration', v[1]),
+        penult, last = self.history()[-2:]
+        assert penult[0] == last[1] == env.R.F
+        assert penult[3] == last[3] == 'migration'
+        assert penult[2] == 'up'
+        assert penult[4] == v[0]
+        assert last[2] == 'down'
+        assert last[4] == v[1]
+        assert _multiequal((env.R.E, env.R.E0), penult[1], last[0]) is not None
+
+    def test_stamp_no_dupe(self, env, version, cmd):
+        @version.iterate
+        def v():
+            cmd.stamp(env.R.B)
+            yield
+            cmd.upgrade(env.R.C)
+        assert self.history() == [
+            (env.R.B, '', 'up', 'stamp', v[0], None),
+            (env.R.C, env.R.B, 'up', 'migration', v[1], None),
         ]
+
+    def test_depends_on(self, env, version, cmd):
+        @version.iterate
+        def v():
+            cmd.upgrade(env.R.H)
+            yield
+            cmd.stamp(env.R.G)
+            yield
+            cmd.stamp(env.R.H)
+
+        upgr, stdown, stup = self.history()[-3:]
+        assert upgr[0] == env.R.H
+        assert _multiequal((env.R.G, env.R.G2, env.R.G4), upgr[1]) is not None
+        assert upgr[2:] == ('up', 'migration', v[0], None)
+        assert stdown == (env.R.G, env.R.H, 'down', 'stamp', v[1], None)
+        assert stup == (env.R.H, env.R.G, 'up', 'stamp', v[2], None)
+
+    def test_stamp_down_from_two_heads_to_ancestor(self, env, version, cmd):
+        @version.iterate
+        def v():
+            cmd.upgrade(env.R.E)
+            yield
+            cmd.upgrade(env.R.D0)
+            yield
+            cmd.stamp(env.R.C)
+
+        upE, upD, downC = self.history()[-3:]
+        assert upE == (env.R.E, env.R.D, 'up', 'migration', v[0], None)
+        assert upD == (env.R.D0, env.R.C, 'up', 'migration', v[1], None)
+        assert downC[0] == env.R.C
+        assert downC[2:] == ('down', 'stamp', v[2], None)
+        assert _multiequal((env.R.D0, env.R.E), downC[1]) is not None
+
+    def test_two_heads_stamp_down_from_one(self, env, version, cmd):
+        @version.iterate
+        def v():
+            cmd.upgrade(env.R.E)
+            yield
+            cmd.upgrade(env.R.E0)
+            yield
+            cmd.stamp(env.R.D)
+
+        assert self.history()[-1] == (env.R.D, env.R.E, 'down', 'stamp', v[2],
+                                      None)
+
+    def test_branches(self, env, version, cmd):
+        @version.iterate
+        def v():
+            cmd.upgrade(env.R.D)
+            yield
+            cmd.downgrade(env.R.C)
+            yield
+            cmd.stamp(env.R.E1)
+            yield
+            cmd.upgrade(env.R.H)
+
+        history = [x[:-1] for x in self.history()]
+
+        assert _find(history, (env.R.D, env.R.C, 'up', 'migration', v[0]),
+                     True) is not None
+
+        assert _find(history, (env.R.C, env.R.D, 'down', 'migration', v[1]),
+                     True) == 0
+        assert all(x[2] == 'up' for x in history)
+        # no more checking direction or custom data
+        history = [x[:2] + x[3:] for x in history]
+
+        assert _find(history, (env.R.E1, env.R.C, 'stamp', v[2]), True) == 0
+        assert all(x[2] == 'migration' for x in history)
+        assert all(x[-1] == v[3] for x in history)
+        # no more checking type or revision
+        history = [x[:2] + x[3:-1] for x in history]
+
+        assert _find(history, (env.R.D, env.R.C)) is not None
+        # but we won't find D0, it was skipped by the stamp to E1
+        assert _find(history, (env.R.D0, env.R.C)) is None
+        assert _find(history, (env.R.E0, env.R.D0)) is not None
+
+
+class TestSqlMode(TestBase):
+    def test_sql_mode(self, env, cmd, capsys):
+        _, _ = capsys.readouterr()
+        now = str(datetime.utcnow())
+        with mock.patch('audit_alembic.test_custom_data', now):
+            cmd.upgrade(env.R.B, sql=True)
+        out, _ = capsys.readouterr()
+        print('duplicate out? ', out)
+        out = list(filter(None, out.split('\n')))
+
+        def has_create(l):
+            return l.lower().startswith('create table alembic_version_history')
+
+        assert _find(out, has_create, True) is not None, \
+            'create table statement not found'
+        assert _find(out, has_create) is None, \
+            'duplicate create table statement found'
+        assert _find(out, lambda l: (env.R.A in l and l.lower().startswith(
+            'insert into alembic_version_history '
+        ))) is not None, 'insert statement not found'
+
+
+class TestEnsureCoverage(TestBase):  # might as well call it what it is...
+    def test_create_with_metadata(self):
+        audit_alembic.Auditor.create('a', metadata=MetaData())
+
+    def test_null_version_raises_warning(self):
+        with pytest.warns(exc.UserVersionWarning):
+            audit_alembic.Auditor.create(None)
+
+    def test_null_version_nullable_no_warning(self, recwarn):
+        audit_alembic.Auditor.create(None, user_version_nullable=True)
+        assert not [w for w in recwarn.list
+                    if isinstance(w, exc.UserVersionWarning)]
+
+    def test_null_version_callable_raises_warning(self, env, cmd):
+        with mock.patch('audit_alembic.test_auditor',
+                        audit_alembic.Auditor.create(lambda **kw: None)), \
+                pytest.warns(exc.UserVersionWarning):
+            cmd.upgrade(env.R.A)
+
+    def test_null_version_callable_with_nullable_no_warning(self, env, cmd,
+                                                            recwarn):
+        with mock.patch('audit_alembic.test_auditor',
+                        audit_alembic.Auditor.create(
+                            lambda **kw: None, user_version_nullable=True)):
+            cmd.upgrade(env.R.A)
+        assert not [w for w in recwarn.list
+                    if isinstance(w, exc.UserVersionWarning)]
+
+    def test_custom_table(self, env, cmd, version):
+        # note: MYSQL turns timestamps to 1-second granularity... we must do
+        # the same to ensure passing tests
+        def flatten(dt, up=False):
+            if up:
+                dt += timedelta(milliseconds=990)
+            return dt.replace(microsecond=0)
+
+        before = flatten(datetime.utcnow())
+        with mock.patch('audit_alembic.test_auditor',
+                        _custom_auditor()) as auditor:
+            cmd.upgrade(env.R.A)
+
+        q = select([auditor.table.c.changed_at])
+        results = sqla_test_config.db.execute(q).fetchall()
+        assert len(results) == 1 and len(results[0]) == 1
+        then = results[0][0]
+        assert before <= then
+        after = flatten(datetime.utcnow(), True)  # ceiling
+        assert then <= after
+
+    def test_no_global_context(self):
+        with audit_alembic.test_auditor.setup():
+            from alembic import context
+            assert context.configure.__name__ == 'audit_alembic_configure'
+
+    def test_supports_callback_test(self):
+        from audit_alembic import supports_callback
+        assert supports_callback()
+
+        def good(on_version_apply=None):
+            pass  # pragma: no cover
+
+        def bad():
+            pass  # pragma: no cover
+
+        assert supports_callback(good)
+        assert not supports_callback(bad)
+
+
+class TestErrors(TestBase):
+    __backend__ = True
+
+    def test_bad_make_row_non_callable(self):
+        with pytest.raises(exc.AuditConstructError):
+            _custom_auditor(make_row=object())
+
+    def test_duplicate_column_names(self):
+        with pytest.raises(exc.AuditCreateError):
+            audit_alembic.Auditor.create(
+                'a',
+                alembic_version_column_name='foo',
+                extra_columns=[(Column('foo'), 'bar')],
+            )
+
+    def test_bad_migration_type(self):
+        class BadMigrationInfo(object):
+            is_migration = False
+            is_stamp = False
+            up_revision_id = 'spam'
+
+        with pytest.raises(exc.AuditRuntimeError):
+            audit_alembic.CommonColumnValues.operation_type(
+                step=BadMigrationInfo)
+
+    def test_no_callback_support(self):
+        class BadContext(object):
+            def configure(self):
+                pass  # pragma: no cover
+
+        with pytest.raises(exc.AuditSetupError):
+            audit_alembic.test_auditor.setup(context=BadContext()).__enter__()
+
+    def test_not_multiequal(self):
+        assert _multiequal('a', 'a##b') is None
+
+    def test_bad_multiequal(self):
+        with pytest.raises(AuditTypeError):
+            _multiequal(object())
+
+    def test_nested_auditor(self, env, cmd):
+        existing_setup = audit_alembic.test_auditor.setup
+
+        @contextlib.contextmanager
+        def nested_setup():
+            with existing_setup():
+                with _custom_auditor().setup():
+                    yield  # pragma: no cover
+
+        with pytest.raises(exc.AuditSetupError), \
+                mock.patch('audit_alembic.test_auditor.setup', nested_setup):
+            cmd.upgrade(env.R.A)
+
+    def test_bad_make_row_callable(self, env, cmd):
+        with mock.patch('audit_alembic.test_auditor',
+                        _custom_auditor(lambda **_: None)), \
+                pytest.raises(exc.AuditRuntimeError):
+            cmd.upgrade(env.R.A)

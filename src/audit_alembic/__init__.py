@@ -1,3 +1,5 @@
-__version__ = "0.1.0dev2"
+__version__ = "0.2.0"
 
-from .audit import Auditor  # noqa: F401
+from .base import Auditor  # noqa: F401
+from .base import CommonColumnValues  # noqa: F401
+from .base import supports_callback  # noqa: F401
