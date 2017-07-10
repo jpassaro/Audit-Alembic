@@ -1,11 +1,8 @@
-import contextlib
 import functools
 import inspect
 import warnings
 from datetime import datetime
 
-from alembic import __version__ as alembic_version
-from alembic import util as alembic_util
 from alembic.operations import ops
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
@@ -14,10 +11,6 @@ from sqlalchemy import Table
 from sqlalchemy import types
 
 from . import exc
-
-
-def to_tuple(x):
-    return alembic_util.to_tuple(x, default=())
 
 
 def supports_callback(configure_method=None):
@@ -294,71 +287,6 @@ class Auditor(object):
 
         auditor = cls(Table(table_name, metadata, *columns), col_vals)
         return auditor
-
-    @contextlib.contextmanager
-    def setup(self, context=None):
-        """Call to set up audit listening.
-
-        This convenience function checks whether the current version of
-        alembic supports it and if so, monkey-patches ``context.configure`` to
-        inject this listener into its arguments.
-
-        It must be used as a context manager, since afterward it undoes the
-        monkey patch. E.g. at the end of an env.py file::
-
-            with auditor.setup():
-                if context.is_offline_mode():
-                    run_migrations_offline()
-                else:
-                    run_migrations_online()
-
-        This is merely a convenience method and cannot be nested. E.g.
-        the following is not supported::
-
-            with auditor1.setup():
-                with auditor2.setup():
-                    ...
-
-        If this is your use case, it is better to give the two Auditors
-        directly to Alembic's ``on_version_apply``::
-
-            from alembic import context
-            context.configure(
-                ...
-                on_version_apply=[auditor1.listen, auditor2.listen]
-            )
-
-
-        :param context: the context to monkey-patch. If none is provided,
-            ``alembic.context`` is used by default, which is generally the
-            right choice when run from inside ``env.py``.  An
-            :class:`.AuditSetupError` is raised if the ``configure`` method of
-            the context does not explicitly support the keyword
-            ``on_version_apply`` (this may change in the future).
-        """
-        if context is None:
-            from alembic import context
-
-        orig_configure = context.configure
-        if orig_configure.__name__ == 'audit_alembic_configure':
-            raise exc.AuditSetupError('nested setup blocks are not supported, '
-                                      'use on_version_apply if you have two '
-                                      'listeners')
-        elif not supports_callback(orig_configure):
-            raise exc.AuditSetupError(
-                'Alembic version %s does not support event listening'
-                % alembic_version)
-
-        def audit_alembic_configure(**kw):
-            on_version_apply = to_tuple(kw.get('on_version_apply'))
-            kw['on_version_apply'] = on_version_apply + (self.listen,)
-            return orig_configure(**kw)
-
-        context.configure = audit_alembic_configure
-        try:
-            yield
-        finally:
-            context.configure = orig_configure
 
     def make_row(self, **kw):
         make_row = self._make_row

@@ -29,11 +29,20 @@ test_col_name = 'custom_data'
 
 _env_content = """
 import audit_alembic
+import audit_alembic.exc
 from sqlalchemy import Column, engine_from_config, pool, types
+
+if not audit_alembic.supports_callback():
+    from alembic import __version__ as al_version
+    raise audit_alembic.exc.AuditSetupError(
+        'Alembic version %r not supported' % al_version)
+
+listen = audit_alembic.test_auditor.listen
 
 def run_migrations_offline():
     url = config.get_main_option('sqlalchemy.url')
-    context.configure(url=url, target_metadata=None, literal_binds=True)
+    context.configure(url=url, target_metadata=None,
+                      literal_binds=True, on_version_apply=listen)
     with context.begin_transaction():
         context.run_migrations()
 
@@ -41,13 +50,15 @@ def run_migrations_online():
     connectable = audit_alembic.test_version.engine
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=None)
+        context.configure(connection=connection, target_metadata=None,
+                          on_version_apply=listen)
         with context.begin_transaction():
             context.run_migrations()
 
-with audit_alembic.test_auditor.setup():
-    (run_migrations_offline if context.is_offline_mode()
-     else run_migrations_online)()
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
 """
 
 _cfg_content = """
@@ -486,11 +497,6 @@ class TestEnsureCoverage(TestBase):  # might as well call it what it is...
         after = flatten(datetime.utcnow(), True)  # ceiling
         assert then <= after
 
-    def test_no_global_context(self):
-        with audit_alembic.test_auditor.setup():
-            from alembic import context
-            assert context.configure.__name__ == 'audit_alembic_configure'
-
     def test_supports_callback_test(self):
         from audit_alembic import supports_callback
         assert supports_callback()
@@ -530,33 +536,12 @@ class TestErrors(TestBase):
             audit_alembic.CommonColumnValues.operation_type(
                 step=BadMigrationInfo)
 
-    def test_no_callback_support(self):
-        class BadContext(object):
-            def configure(self):
-                pass  # pragma: no cover
-
-        with pytest.raises(exc.AuditSetupError):
-            audit_alembic.test_auditor.setup(context=BadContext()).__enter__()
-
     def test_not_multiequal(self):
         assert _multiequal('a', 'a##b') is None
 
     def test_bad_multiequal(self):
         with pytest.raises(AuditTypeError):
             _multiequal(object())
-
-    def test_nested_auditor(self, env, cmd):
-        existing_setup = audit_alembic.test_auditor.setup
-
-        @contextlib.contextmanager
-        def nested_setup():
-            with existing_setup():
-                with _custom_auditor().setup():
-                    yield  # pragma: no cover
-
-        with pytest.raises(exc.AuditSetupError), \
-                mock.patch('audit_alembic.test_auditor.setup', nested_setup):
-            cmd.upgrade(env.R.A)
 
     def test_bad_make_row_callable(self, env, cmd):
         with mock.patch('audit_alembic.test_auditor',
