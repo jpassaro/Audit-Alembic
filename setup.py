@@ -74,11 +74,14 @@ setup(
         'db',
     ],
     install_requires=[
-        'alembic>=0.9.3',
+        'alembic==0.9.3.dev0',
     ],
     test_requires=[
         'pytest',
         'psycopg2',
+    ],
+    dependency_links=[
+        'https://bitbucket.org/jpassaro/alembic/get/callback-stamp-errors.tar.gz#egg=alembic-0.9.3.dev0',
     ],
     extras_require={
         # eg:
