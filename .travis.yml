@@ -11,7 +11,7 @@ env:
   - TRHOME=~travis
   matrix:
   - TOXENV=check
-  - TOXENV=docs
+    # - TOXENV=docs
 matrix:
   include:
   - python: '2.7'
