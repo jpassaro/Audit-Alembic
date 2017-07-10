@@ -12,6 +12,7 @@ stamps.
   records information from that callback to a SQL table of the user's choosing.
 * Test setup making use of SQLAlchemy testing plugins and utilities and Alembic
   testing utilities.
+* Support for running with --sql as well as online mode.
 * Tests covering stamps, branches, and a couple of other complex use cases.
 * Test setup to cover multiple DB backends. Known to work: SQLite, Postgresql,
   mysql.
