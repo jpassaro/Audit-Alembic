@@ -26,7 +26,9 @@ project = u'Audit-Alembic'
 year = '2017'
 author = u'John Passaro'
 copyright = '{0}, {1}'.format(year, author)
-version = release = u'0.1.0'
+
+from audit_alembic import __version__ as version
+release = version
 
 pygments_style = 'trac'
 templates_path = ['.']
@@ -40,7 +42,7 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if not on_rtd:  # only set the theme if we're building docs locally
     html_theme = 'sphinx_rtd_theme'
 
-html_use_smartypants = True
+# html_use_smartypants = True  # deprecated apparently
 html_last_updated_fmt = '%b %d, %Y'
 html_split_index = False
 html_sidebars = {

@@ -10,11 +10,9 @@ Overview
     * - docs
       - |docs|
     * - tests
-      - | |travis| |appveyor| |requires|
-        | |codecov|
+      - | |travis| | |codecov|
     * - package
-      - | |version| |wheel| |supported-versions| |supported-implementations|
-        | |commits-since|
+      - | |version|
 
 .. |docs| image:: https://readthedocs.org/projects/Audit-Alembic/badge/?style=flat
     :target: https://readthedocs.org/projects/Audit-Alembic
@@ -24,14 +22,6 @@ Overview
     :alt: Travis-CI Build Status
     :target: https://travis-ci.org/jpassaro/Audit-Alembic
 
-.. |appveyor| image:: https://ci.appveyor.com/api/projects/status/github/jpassaro/Audit-Alembic?branch=master&svg=true
-    :alt: AppVeyor Build Status
-    :target: https://ci.appveyor.com/project/jpassaro/Audit-Alembic
-
-.. |requires| image:: https://requires.io/github/jpassaro/Audit-Alembic/requirements.svg?branch=master
-    :alt: Requirements Status
-    :target: https://requires.io/github/jpassaro/Audit-Alembic/requirements/?branch=master
-
 .. |codecov| image:: https://codecov.io/github/jpassaro/Audit-Alembic/coverage.svg?branch=master
     :alt: Coverage Status
     :target: https://codecov.io/github/jpassaro/Audit-Alembic
@@ -39,10 +29,6 @@ Overview
 .. |version| image:: https://img.shields.io/pypi/v/Audit-Alembic.svg
     :alt: PyPI Package latest release
     :target: https://pypi.python.org/pypi/Audit-Alembic
-
-.. |commits-since| image:: https://img.shields.io/github/commits-since/jpassaro/Audit-Alembic/v0.1.0.svg
-    :alt: Commits since latest release
-    :target: https://github.com/jpassaro/Audit-Alembic/compare/v0.1.0...master
 
 .. |wheel| image:: https://img.shields.io/pypi/wheel/Audit-Alembic.svg
     :alt: PyPI Wheel
@@ -110,21 +96,21 @@ Slightly more involved::
 More involved
 -------------
 
-These functions create an alembic history table and merely ask
-you to specify your application version (though they allow much
-else to be customized as well). If you already have a table you
-wish to add records to whenever an alembic operation takes place,
-and you have a callable that creates a row for that table,
-you can instantiate ``Auditor`` directly::
+The function :meth:`.Auditor.create` is a factory method: it creates an Alembic
+history table and merely asks you to specify your application version (though
+it allows much else to be customized as well). If you are already maintaining
+a table you wish to add records to whenever an Alembic operation takes place,
+and you have a callable that creates a row for that table, you can instantiate
+:class:`.Auditor` directly::
 
     alembic_auditor = Auditor(HistoryTable, HistoryTable.alembic_version_applied)
 
-In this case ``alembic_version_applied`` specifies how to build the row
-based on Alembic's ``on_version_apply`` hook.
+In this case ``alembic_version_applied`` returns a dictionary that can serve
+as parameters for an INSERT statement on ``HistoryTable``. It has the same
+signature as documented for Alembic's ``on_version_apply`` hook.
 
-Customizing not just what data to populate a row with but whehter the row
-should appear at all is not currently supported. If you wish to do so, directly
-using Alembic's ``on_version_apply`` hook may be a better fit for you.
+Customizing not just what data to populate a row with but whether the row
+should appear at all is not currently supported. Pull requests are welcomed.
 
 Documentation
 =============
@@ -137,12 +123,10 @@ Development
 Status
 ------
 
-The most basic tests, for using Audit-Alembic "correctly", pass for Postgres,
-MYSQL, and SQLite as a file. Travis does not appear to support MSSQL or Oracle
-so test status for those DB backends is not known.
-
-The next tests that need to be written should get us to 100% code coverage
-as well as covering various error cases.
+The bulk of the test suite is complete and passing for Postgres, mysql, and
+SQLite. Travis does not appear to support MSSQL or Oracle so test status for
+those DB backends is not known. If you find that it does not work for your
+backend, pull requests to make it so will be happily accepted.
 
 Please feel free to expand from there. See the issues for a list of known
 issues to work on.
