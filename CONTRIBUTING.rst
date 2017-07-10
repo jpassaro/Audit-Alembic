@@ -5,15 +5,26 @@ Contributing
 Contributions are welcome, and they are greatly appreciated! Every
 little bit helps, and credit will always be given.
 
+.. note:
+
+These suggestions are largely adapted from those provided by the `cookiecutter
+template used for this project <cookiecutter-pylibrary_>`_. I tweaked them and stand
+behind all of them. Acknowledgment nonetheless is due to others who gave me
+something to tweak.
+
+.. _cookiecutter-pylibrary: https://github.com/ionelmc/cookiecutter-pylibrary
+
 Bug reports
 ===========
 
-When `reporting a bug <https://github.com/jpassaro/Audit-Alembic/issues>`_
+When `reporting a bug <gh-issues_>`_
 please include:
 
     * Your operating system name and version.
     * Any details about your local setup that might be helpful in troubleshooting.
     * Detailed steps to reproduce the bug.
+
+.. _gh-issues: https://github.com/jpassaro/Audit-Alembic/issues
 
 Documentation improvements
 ==========================
@@ -25,8 +36,7 @@ articles, and such.
 Feature requests and feedback
 =============================
 
-The best way to send feedback is to file an issue at
-https://github.com/jpassaro/Audit-Alembic/issues.
+The best way to send feedback is to file an issue at `gh-issues`_.
 
 If you are proposing a feature:
 
@@ -39,7 +49,7 @@ If you are proposing a feature:
 Development
 ===========
 
-To set up `Audit-Alembic` for local development:
+To set up Audit-Alembic for local development:
 
 1. Fork `Audit-Alembic <https://github.com/jpassaro/Audit-Alembic>`_
    (look for the "Fork" button).
@@ -98,3 +108,5 @@ installed first. ``tox`` does that for you.
 To run all the test environments in *parallel* (you need to ``pip install detox``)::
 
     detox
+
+(Nota bene: the author has never done this.)
