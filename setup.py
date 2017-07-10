@@ -39,7 +39,8 @@ setup(
     author='John Passaro',
     author_email='john.a.passaro@gmail.com',
     url='https://github.com/jpassaro/Audit-Alembic',
-    download_url='https://jpassaro/Audit-Alembic/archive/%s.tar.gz' % VERSION,
+    download_url=('https://github.com/jpassaro/Audit-Alembic/archive/%s.tar.gz'
+                  % VERSION),
     packages=find_packages('src'),
     package_dir={'': 'src'},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
