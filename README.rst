@@ -62,26 +62,24 @@ Getting started
 Quickstart
 ----------
 
-Add the following lines to your Alembic ``env.py``::
+`Create an Alembic environment
+<http://alembic.zzzcomputing.com/en/latest/tutorial.html>`_ if you don't
+already have one.  Edit its ``env.py`` to include the following::
 
-    from audit_alembic import Auditor
+    # ... imports ...
+    import audit_alembic
     from myapp import version
 
-    Auditor.create(version).setup()
-
-Slightly more involved::
-
-    # myapp.py
-    alembic_auditor = Auditor.create(version, ...)
-
-    # env.py
-    from myapp import alembic_auditor
+    if not audit_alembic.alembic_supports_callback():
+        raise audit_alembic.exc.AuditSetupError(
+            'This Alembic version does not have on_version_apply')
+    auditor = audit_alembic.Auditor.create(version)
 
     def run_migrations_offline():
         ...
         context.configure(
             ...
-            on_version_apply=alembic_auditor.listen
+            on_version_apply=auditor.listen,
         )
         ...
 
@@ -89,33 +87,37 @@ Slightly more involved::
         ...
         context.configure(
             ...
-            on_version_apply=alembic_auditor.listen
+            on_version_apply=auditor.listen
         )
     ...
 
 More involved
 -------------
 
-The function :meth:`.Auditor.create` is a factory method: it creates an Alembic
-history table and merely asks you to specify your application version (though
-it allows much else to be customized as well). If you are already maintaining
-a table you wish to add records to whenever an Alembic operation takes place,
-and you have a callable that creates a row for that table, you can instantiate
+:meth:`.Auditor.create` is a factory method: it creates an Alembic history
+table for you and merely asks you to specify your application version (though
+it allows much else to be customized as well). If you are already maintaining a
+table you wish to add records to whenever an Alembic operation takes place, and
+you have a callable that creates a row for that table, you can instantiate
 :class:`.Auditor` directly::
 
-    alembic_auditor = Auditor(HistoryTable, HistoryTable.alembic_version_applied)
+    auditor = Auditor(HistoryTable, HistoryTable.alembic_version_applied)
 
-In this case ``alembic_version_applied`` returns a dictionary that can serve
-as parameters for an INSERT statement on ``HistoryTable``. It has the same
+In this case ``alembic_version_applied`` must return a dictionary that can
+serve as binds for an INSERT statement on ``HistoryTable``. It has the same
 signature as documented for Alembic's ``on_version_apply`` hook.
 
-Customizing not just what data to populate a row with but whether the row
-should appear at all is not currently supported. Pull requests are welcomed.
+.. note
+    Customizing not just what data to populate a row with but whether the row
+    should appear at all is not currently supported but is
+    `planned <http://github.com/jpassaro/Audit-Alembic/issues/1>`_ for a
+    release in the near future. Pull requests are welcomed.
 
-Documentation
-=============
+Full Documentation
+==================
 
-https://Audit-Alembic.readthedocs.io/ (not available yet)
+Once the 0.2.0 release is complete, the docs will be accessible here:
+https://Audit-Alembic.readthedocs.io/
 
 Development
 ===========
@@ -145,21 +147,5 @@ To run all tests (i.e. py2 + py3, across all database drivers), run::
 
     $ tox
 
+See CONTRIBUTING.rst for more detail.
 Also see our `Travis setup <https://travis-ci.org/jpassaro/Audit-Alembic>`_.
-
-Note, to combine the coverage data from all the tox environments run:
-
-.. list-table::
-    :widths: 10 90
-    :stub-columns: 1
-
-    - - Windows
-      - ::
-
-            set PYTEST_ADDOPTS=--cov-append
-            tox
-
-    - - Other
-      - ::
-
-            PYTEST_ADDOPTS=--cov-append tox
