@@ -13,7 +13,7 @@ from sqlalchemy import types
 from . import exc
 
 
-def supports_callback(configure_method=None):
+def alembic_supports_callback(configure_method=None):
     """Inspect a method to tell whether it supports on_version_apply callback.
 
     :meth:`.Auditor.setup` uses this essentially to ensure the correct version

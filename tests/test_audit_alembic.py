@@ -1,4 +1,3 @@
-import contextlib
 import functools
 from datetime import datetime
 from datetime import timedelta
@@ -32,7 +31,7 @@ import audit_alembic
 import audit_alembic.exc
 from sqlalchemy import Column, engine_from_config, pool, types
 
-if not audit_alembic.supports_callback():
+if not audit_alembic.alembic_supports_callback():
     from alembic import __version__ as al_version
     raise audit_alembic.exc.AuditSetupError(
         'Alembic version %r not supported' % al_version)
@@ -498,8 +497,8 @@ class TestEnsureCoverage(TestBase):  # might as well call it what it is...
         assert then <= after
 
     def test_supports_callback_test(self):
-        from audit_alembic import supports_callback
-        assert supports_callback()
+        from audit_alembic import alembic_supports_callback
+        assert alembic_supports_callback()
 
         def good(on_version_apply=None):
             pass  # pragma: no cover
@@ -507,8 +506,8 @@ class TestEnsureCoverage(TestBase):  # might as well call it what it is...
         def bad():
             pass  # pragma: no cover
 
-        assert supports_callback(good)
-        assert not supports_callback(bad)
+        assert alembic_supports_callback(good)
+        assert not alembic_supports_callback(bad)
 
 
 class TestErrors(TestBase):
