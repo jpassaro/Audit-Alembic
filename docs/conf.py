@@ -3,52 +3,52 @@ from __future__ import unicode_literals
 
 import os
 
+from audit_alembic import __version__ as version
 
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.coverage',
-    'sphinx.ext.doctest',
-    'sphinx.ext.extlinks',
-    'sphinx.ext.ifconfig',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.todo',
-    'sphinx.ext.viewcode',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.coverage",
+    "sphinx.ext.doctest",
+    "sphinx.ext.extlinks",
+    "sphinx.ext.ifconfig",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.todo",
+    "sphinx.ext.viewcode",
 ]
-if os.getenv('SPELLCHECK'):
-    extensions += 'sphinxcontrib.spelling',
+if os.getenv("SPELLCHECK"):
+    extensions += ("sphinxcontrib.spelling",)
     spelling_show_suggestions = True
-    spelling_lang = 'en_US'
+    spelling_lang = "en_US"
 
-source_suffix = '.rst'
-master_doc = 'index'
-project = u'Audit-Alembic'
-year = '2017'
-author = u'John Passaro'
-copyright = '{0}, {1}'.format(year, author)
+source_suffix = ".rst"
+master_doc = "index"
+project = "Audit-Alembic"
+year = "2017"
+author = "John Passaro"
+copyright = "{0}, {1}".format(year, author)
 
-from audit_alembic import __version__ as version
 release = version
 
-pygments_style = 'trac'
-templates_path = ['.']
+pygments_style = "trac"
+templates_path = ["."]
 extlinks = {
-    'issue': ('https://github.com/jpassaro/Audit-Alembic/issues/%s', '#'),
-    'pr': ('https://github.com/jpassaro/Audit-Alembic/pull/%s', 'PR #'),
+    "issue": ("https://github.com/jpassaro/Audit-Alembic/issues/%s", "#"),
+    "pr": ("https://github.com/jpassaro/Audit-Alembic/pull/%s", "PR #"),
 }
 # on_rtd is whether we are on readthedocs.org
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+on_rtd = os.environ.get("READTHEDOCS", None) == "True"
 
 if not on_rtd:  # only set the theme if we're building docs locally
-    html_theme = 'sphinx_rtd_theme'
+    html_theme = "sphinx_rtd_theme"
 
 # html_use_smartypants = True  # deprecated apparently
-html_last_updated_fmt = '%b %d, %Y'
+html_last_updated_fmt = "%b %d, %Y"
 html_split_index = False
 html_sidebars = {
-   '**': ['searchbox.html', 'globaltoc.html', 'sourcelink.html'],
+    "**": ["searchbox.html", "globaltoc.html", "sourcelink.html"],
 }
-html_short_title = '%s-%s' % (project, version)
+html_short_title = "%s-%s" % (project, version)
 
 napoleon_use_ivar = True
 napoleon_use_rtype = False

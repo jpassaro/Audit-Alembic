@@ -1,4 +1,3 @@
-
 class AuditError(Exception):
     pass
 
@@ -20,4 +19,4 @@ class AuditSetupError(AuditError):
 
 
 class UserVersionWarning(UserWarning):
-    '''Audit-Alembic recommends against providing a null user version'''
+    """Audit-Alembic recommends against providing a null user version"""

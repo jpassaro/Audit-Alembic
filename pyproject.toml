@@ -1,0 +1,76 @@
+[tool.poetry]
+name = "audit-alembic"
+version = "0.3.0"
+description = "An Alembic plugin to keep records of upgrades and downgrades."
+authors = [
+  "John Passaro <john.a.passaro@gmail.com>",
+  "Matthijs Wesseling <matthijswesseling@gmail.com>",
+]
+license = "MIT"
+readme = "README.rst"
+repository = "https://github.com/bladieblah/Audit-Alembic"
+classifiers = [
+  # complete classifier list: http://pypi.python.org/pypi?%3Aaction=list_classifiers
+  'Development Status :: 3 - Alpha',
+  'Intended Audience :: Developers',
+  'License :: OSI Approved :: BSD License',
+  'Operating System :: Unix',
+  'Operating System :: POSIX',
+  'Operating System :: Microsoft :: Windows',
+  'Programming Language :: Python',
+  'Programming Language :: Python :: 3.8',
+  'Programming Language :: Python :: 3.9',
+  'Programming Language :: Python :: 3.10',
+  'Programming Language :: Python :: 3.11',
+  'Programming Language :: Python :: 3.12',
+  'Programming Language :: Python :: Implementation :: CPython',
+  'Programming Language :: Python :: Implementation :: PyPy',
+  'Topic :: Utilities',
+]
+keywords = [
+  'database',
+  'migration',
+  'db',
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+alembic = "^1.13.2"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.5.5"
+psycopg2 = "^2.9.9"
+pytest = "^8.3.2"
+pytest-cov = "^5.0.0"
+
+[tool.ruff]
+indent-width = 4
+line-length = 120
+
+[tool.ruff.lint]
+extend-select = ["I"]
+
+[tool.ruff.lint.isort]
+forced-separate = ["fmsdp_console_backend"]
+
+[tool.coverage.run]
+branch = true
+omit = [
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-rxEfsw --strict --doctest-modules --doctest-glob=*.rst --tb=short --nomypy"
+
+# Taken from sqlalchemy, hate that this is necessary
+markers = [
+    "memory_intensive: memory / CPU intensive suite tests",
+    "mypy: mypy integration / plugin tests",
+    "timing_intensive: time-oriented tests that are sensitive to race conditions",
+    "backend: tests that should run on all backends; typically dialect-sensitive",
+    "sparse_backend: tests that should run on multiple backends, not necessarily all",
+]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
